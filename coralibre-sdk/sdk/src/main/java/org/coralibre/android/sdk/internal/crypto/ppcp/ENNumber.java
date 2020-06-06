@@ -3,6 +3,7 @@ package org.coralibre.android.sdk.internal.crypto.ppcp;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidParameterException;
+import java.util.Objects;
 
 public class ENNumber {
     public static final long MAX_UINT_32 = 4294967295L;
@@ -56,5 +57,18 @@ public class ENNumber {
         byte[] retVal = new byte[INT_BYTES];
         System.arraycopy(buffer.array(), 0, retVal, 0, INT_BYTES);
         return retVal;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ENNumber enNumber = (ENNumber) o;
+        return val == enNumber.val;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(val);
     }
 }

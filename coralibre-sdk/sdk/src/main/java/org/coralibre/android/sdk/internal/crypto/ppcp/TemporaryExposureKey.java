@@ -20,7 +20,7 @@ public class TemporaryExposureKey {
 
     public TemporaryExposureKey(ENNumber timestamp, byte[] value) {
         if(value.length < TEK_LENGTH) throw new InvalidParameterException("tek size not 16bytes");
-        this.timestamp = new ENNumber(((long)(timestamp.get() / TEK_ROLLING_PERIOD)) * TEK_ROLLING_PERIOD);
+        this.timestamp = getMidnight(timestamp);
         System.arraycopy(value, 0, key, 0, TEK_LENGTH);
     }
 
@@ -36,5 +36,9 @@ public class TemporaryExposureKey {
         byte[] retVal = new byte[TEK_LENGTH];
         System.arraycopy(key, 0, retVal, 0, TEK_LENGTH);
         return retVal;
+    }
+
+    public static ENNumber getMidnight(ENNumber enNumber) {
+        return new ENNumber( ((long)(enNumber.get() / TEK_ROLLING_PERIOD)) * TEK_ROLLING_PERIOD);
     }
 }

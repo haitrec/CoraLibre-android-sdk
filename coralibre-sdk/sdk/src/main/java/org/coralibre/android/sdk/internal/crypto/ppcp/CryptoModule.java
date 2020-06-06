@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,7 @@ public class CryptoModule {
     private static final String TAG = CryptoModule.class.getName();
 
     public static final int TEK_MAX_STORE_TIME = 14; //defined as days
-    public static final int FUZZY_COMPARE_TIME = 12; //defined int 10min units
+    public static final int FUZZY_COMPARE_TIME_SLOT = 12; //defined int 10min units
     public static final String RPIK_INFO = "EN-RPIK";
     public static final String AEMK_INFO = "EN-AEMK";
 
@@ -174,6 +175,21 @@ public class CryptoModule {
         RollingProximityIdentifierKey rpik = generateRPIK(tek);
         for(long i = 0; i < TemporaryExposureKey.TEK_ROLLING_PERIOD; i++) {
             rpiList.add(generateRPI(rpik, new ENNumber(enTimestamp + i)));
+        }
+        return rpiList;
+    }
+
+    public static List<RollingProximityIdentifier> generateAllRPIForATimeslot(TemporaryExposureKey tek, ENNumber slot) {
+        ENNumber midnightOfSlot = TemporaryExposureKey.getMidnight(slot);
+        if(!midnightOfSlot.equals(tek.getTimestamp())) {
+            throw new InvalidParameterException("Slot doesn't match TemporaryExposureKey");
+        }
+
+        final long slotTimestamp = slot.get();
+        List<RollingProximityIdentifier> rpiList = new ArrayList<>(TemporaryExposureKey.TEK_ROLLING_PERIOD);
+        RollingProximityIdentifierKey rpik = generateRPIK(tek);
+        for(long i = -FUZZY_COMPARE_TIME_SLOT; i <= FUZZY_COMPARE_TIME_SLOT; i++) {
+            rpiList.add(generateRPI(rpik, new ENNumber(slotTimestamp + i)));
         }
         return rpiList;
     }
