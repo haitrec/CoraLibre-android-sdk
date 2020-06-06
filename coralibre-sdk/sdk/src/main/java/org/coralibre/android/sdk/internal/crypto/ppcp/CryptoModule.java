@@ -14,28 +14,25 @@ import org.bouncycastle.crypto.params.HKDFParameters;
 import org.coralibre.android.sdk.internal.util.Json;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.InvalidParameterException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import static org.coralibre.android.sdk.internal.crypto.ppcp.TemporaryExposureKey.TEK_ROLLING_PERIOD;
+import static org.coralibre.android.sdk.internal.crypto.ppcp.TemporaryExposureKey.getMidnight;
 
 public class CryptoModule {
     private static final String TAG = CryptoModule.class.getName();
 
     public static final int TEK_MAX_STORE_TIME = 14; //defined as days
-    public static final int FUZZY_COMPARE_TIME_SLOT = 12; //defined int 10min units
+    public static final int FUZZY_COMPARE_TIME_DEVIATION = 12; //defined int 10min units
     public static final String RPIK_INFO = "EN-RPIK";
     public static final String AEMK_INFO = "EN-AEMK";
 
@@ -167,39 +164,5 @@ public class CryptoModule {
         } catch (Exception e) {
             throw new CryptoException(e);
         }
-    }
-
-    public static List<RollingProximityIdentifier> generateAllRPIForADay(TemporaryExposureKey tek) {
-        final long enTimestamp = tek.getTimestamp().get();
-        List<RollingProximityIdentifier> rpiList = new ArrayList<>(TemporaryExposureKey.TEK_ROLLING_PERIOD);
-        RollingProximityIdentifierKey rpik = generateRPIK(tek);
-        for(long i = 0; i < TemporaryExposureKey.TEK_ROLLING_PERIOD; i++) {
-            rpiList.add(generateRPI(rpik, new ENNumber(enTimestamp + i)));
-        }
-        return rpiList;
-    }
-
-    public static List<RollingProximityIdentifier> generateAllRPIForATimeslot(TemporaryExposureKey tek, ENNumber slot) {
-        ENNumber midnightOfSlot = TemporaryExposureKey.getMidnight(slot);
-        if(!midnightOfSlot.equals(tek.getTimestamp())) {
-            throw new InvalidParameterException("Slot doesn't match TemporaryExposureKey");
-        }
-
-        final long slotTimestamp = slot.get();
-        List<RollingProximityIdentifier> rpiList = new ArrayList<>(TemporaryExposureKey.TEK_ROLLING_PERIOD);
-        RollingProximityIdentifierKey rpik = generateRPIK(tek);
-        for(long i = -FUZZY_COMPARE_TIME_SLOT; i <= FUZZY_COMPARE_TIME_SLOT; i++) {
-            rpiList.add(generateRPI(rpik, new ENNumber(slotTimestamp + i)));
-        }
-        return rpiList;
-    }
-
-    public static List<RollingProximityIdentifier> filterEncounteredRPIs(List<TemporaryExposureKey> diagnosticKeys,
-                                                            List<RollingProximityIdentifier> collectedRPIs) {
-        List<RollingProximityIdentifier> encounteredRPIs = new ArrayList<>();
-        for(TemporaryExposureKey diagnosticKey : diagnosticKeys) {
-            encounteredRPIs.addAll(filterEncounteredRPIs(diagnosticKey, collectedRPIs));
-        }
-        return encounteredRPIs;
     }
 }

@@ -41,4 +41,8 @@ public class TemporaryExposureKey {
     public static ENNumber getMidnight(ENNumber enNumber) {
         return new ENNumber( ((long)(enNumber.get() / TEK_ROLLING_PERIOD)) * TEK_ROLLING_PERIOD);
     }
+
+    public static long getMidnight(long rawENNumber) {
+        return ((rawENNumber/ TEK_ROLLING_PERIOD) * TEK_ROLLING_PERIOD);
+    }
 }
