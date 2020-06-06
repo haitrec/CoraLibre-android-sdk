@@ -1,5 +1,7 @@
 package org.coralibre.android.sdk.internal.crypto.ppcp;
 
+import android.util.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +34,7 @@ public class ExposeChecker {
         return relatedTEKs;
     }
 
-    private static List<TemporaryExposureKey> getAllRelatedTEKs(List<TemporaryExposureKey> allTEKs,
+    public static List<TemporaryExposureKey> getAllRelatedTEKs(List<TemporaryExposureKey> allTEKs,
                                                                 ENNumber Interval) {
         ENNumber slotBeginning = getMidnight(
                 new ENNumber(Interval.get() - FUZZY_COMPARE_TIME_DEVIATION));
@@ -56,11 +58,30 @@ public class ExposeChecker {
         }
         RollingProximityIdentifierKey rpik = generateRPIK(tek);
         List<RollingProximityIdentifier> generatedRPIs =
-                new ArrayList<>(2 * FUZZY_COMPARE_TIME_DEVIATION);
+                new ArrayList<>(2 * FUZZY_COMPARE_TIME_DEVIATION + 1);
 
-        for(long i = slotBeginning; i < slotEnding; i++) {
+        for(long i = slotBeginning; i <= slotEnding; i++) {
             generatedRPIs.add(generateRPI(rpik, new ENNumber(i)));
         }
         return generatedRPIs;
+    }
+
+    private static List<Pair<TemporaryExposureKey, RollingProximityIdentifier>>
+        findMatches(List<TemporaryExposureKey> teks, List<RollingProximityIdentifier> collectedRPIs) {
+        //TODO: Do dynamic programing foo and use a cache
+        List<Pair<TemporaryExposureKey, RollingProximityIdentifier>> matchingKeys = new
+                ArrayList<>();
+        for(RollingProximityIdentifier crpi : collectedRPIs) {
+            List<TemporaryExposureKey> relatedTeks = getAllRelatedTEKs(teks, crpi.getInterval());
+            for(TemporaryExposureKey tek : relatedTeks) {
+                List<RollingProximityIdentifier> generatedRPIs = generateRPIs(tek, crpi.getInterval());
+                for(RollingProximityIdentifier grpi :  generatedRPIs) {
+                    if(grpi.equals(crpi)) {
+                        matchingKeys.add(new Pair<>(tek, crpi));
+                    }
+                }
+            }
+        }
+        return matchingKeys;
     }
 }

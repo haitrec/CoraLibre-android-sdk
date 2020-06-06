@@ -115,7 +115,7 @@ public class CryptoModule {
             cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
             PaddedData paddedData = new PaddedData(interval);
-            return new RollingProximityIdentifier(cipher.update(paddedData.getData()));
+            return new RollingProximityIdentifier(cipher.update(paddedData.getData()), interval);
         } catch (Exception e) {
             throw new CryptoException(e);
         }
@@ -164,5 +164,11 @@ public class CryptoModule {
         } catch (Exception e) {
             throw new CryptoException(e);
         }
+    }
+
+    public static AssociatedMetadata decryptAEM(AssociatedEncryptedMetadata aem,
+                                                RollingProximityIdentifier rpi,
+                                                TemporaryExposureKey tek) {
+        return decryptAEM(aem, rpi, generateAEMK(tek));
     }
 }

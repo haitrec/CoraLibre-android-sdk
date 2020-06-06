@@ -13,6 +13,10 @@ public class ENNumber {
 
     private long val;
 
+    public ENNumber(ENNumber enNumber) {
+        this.val = enNumber.get();
+    }
+
     public ENNumber(long rawENNumber) {
         set(rawENNumber, false);
     }
