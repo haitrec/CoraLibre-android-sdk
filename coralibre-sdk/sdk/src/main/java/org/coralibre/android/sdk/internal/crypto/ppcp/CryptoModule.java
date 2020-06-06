@@ -20,6 +20,8 @@ import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -32,11 +34,13 @@ public class CryptoModule {
     private static final String TAG = CryptoModule.class.getName();
 
     public static final int TEK_MAX_STORE_TIME = 14; //defined as days
+    public static final int FUZZY_COMPARE_TIME = 12; //defined int 10min units
     public static final String RPIK_INFO = "EN-RPIK";
     public static final String AEMK_INFO = "EN-AEMK";
 
     private static final String TEK_LIST_JSON = "TEK_LIST_JSON";
     private static final String RPIAEM_TODAY_JSON = "RPIAEM_TODAY_JSON";
+
 
     private static CryptoModule instance;
 
@@ -68,15 +72,18 @@ public class CryptoModule {
         return new ENNumber(System.currentTimeMillis() / 1000L, true);
     }
 
-    public static TemporaryExposureKey getNewRandomKey() throws NoSuchAlgorithmException {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance("HmacSHA256");
-        SecretKey secretKey = keyGenerator.generateKey();
-        ENNumber now = getCurrentENNumber();
-        return new TemporaryExposureKey(now, secretKey.getEncoded());
+    public static TemporaryExposureKey getNewRandomKey() {
+        try {
+            KeyGenerator keyGenerator = KeyGenerator.getInstance("HmacSHA256");
+            SecretKey secretKey = keyGenerator.generateKey();
+            ENNumber now = getCurrentENNumber();
+            return new TemporaryExposureKey(now, secretKey.getEncoded());
+        } catch (Exception e) {
+            throw new CryptoException(e);
+        }
     }
 
-    public static RollingProximityIdentifierKey generateRPIK(TemporaryExposureKey tek)
-            throws UnsupportedEncodingException {
+    public static RollingProximityIdentifierKey generateRPIK(TemporaryExposureKey tek) {
         HKDFBytesGenerator generator = new HKDFBytesGenerator(new SHA256Digest());
         generator.init(new HKDFParameters(tek.getKey(),
                 null,
@@ -86,8 +93,7 @@ public class CryptoModule {
         return new RollingProximityIdentifierKey(rawRPIK);
     }
 
-    public static AssociatedEncryptedMetadataKey generateAEMK(TemporaryExposureKey tek)
-            throws UnsupportedEncodingException {
+    public static AssociatedEncryptedMetadataKey generateAEMK(TemporaryExposureKey tek) {
         HKDFBytesGenerator generator = new HKDFBytesGenerator(new SHA256Digest());
         generator.init(new HKDFParameters(tek.getKey(),
                 null,
@@ -97,61 +103,87 @@ public class CryptoModule {
         return new AssociatedEncryptedMetadataKey(rawAEMK);
     }
 
-    public static RollingProximityIdentifier generateRPI(RollingProximityIdentifierKey rpik)
-            throws InvalidKeyException,
-            NoSuchPaddingException,
-            NoSuchAlgorithmException {
-        SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
-        // normally ECB is a bad idea, but in this case we just want to encrypt a single block
-        @SuppressLint("GetInstance")
-        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    public static RollingProximityIdentifier generateRPI(RollingProximityIdentifierKey rpik) {
+        return generateRPI(rpik, getCurrentENNumber());
+    }
 
-        PaddedData paddedData = new PaddedData(getCurrentENNumber());
-        return new RollingProximityIdentifier(cipher.update(paddedData.getData()));
+    public static RollingProximityIdentifier generateRPI(RollingProximityIdentifierKey rpik,
+                                                         ENNumber timestamp) {
+        try {
+            SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
+            // normally ECB is a bad idea, but in this case we just want to encrypt a single block
+            @SuppressLint("GetInstance")
+            Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+            PaddedData paddedData = new PaddedData(timestamp);
+            return new RollingProximityIdentifier(cipher.update(paddedData.getData()));
+        } catch (Exception e) {
+            throw new CryptoException(e);
+        }
     }
 
     public static PaddedData decryptRPI(RollingProximityIdentifier rpi,
-                                        RollingProximityIdentifierKey rpik)
-            throws InvalidKeyException,
-            NoSuchPaddingException,
-            NoSuchAlgorithmException {
-        SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
-        // normally ECB is a bad idea, but in this case we just want to encrypt a single block
-        @SuppressLint("GetInstance")
-        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+                                        RollingProximityIdentifierKey rpik) {
+        try {
+            SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
+            // normally ECB is a bad idea, but in this case we just want to encrypt a single block
+            @SuppressLint("GetInstance")
+            Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec);
 
-        return new PaddedData(cipher.update(rpi.getData()));
+            return new PaddedData(cipher.update(rpi.getData()));
+        } catch (Exception e) {
+            throw new CryptoException(e);
+        }
     }
 
     public static AssociatedEncryptedMetadata encryptAM(AssociatedMetadata am,
                                                      RollingProximityIdentifier rpi,
-                                                     AssociatedEncryptedMetadataKey aemk)
-            throws InvalidKeyException,
-            NoSuchPaddingException,
-            NoSuchAlgorithmException,
-            InvalidAlgorithmParameterException {
-        SecretKey keySpec = new SecretKeySpec(aemk.getKey(), "AES");
-        IvParameterSpec ivSpec = new IvParameterSpec(rpi.getData());
-        Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                                                     AssociatedEncryptedMetadataKey aemk) {
+        try {
+            SecretKey keySpec = new SecretKeySpec(aemk.getKey(), "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(rpi.getData());
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
 
-        return new AssociatedEncryptedMetadata(cipher.update(am.getData()));
+            return new AssociatedEncryptedMetadata(cipher.update(am.getData()));
+        } catch (Exception e) {
+            throw new CryptoException(e);
+        }
     }
 
     public static AssociatedMetadata decryptAEM(AssociatedEncryptedMetadata aem,
                                                 RollingProximityIdentifier rpi,
-                                                AssociatedEncryptedMetadataKey aemk)
-            throws InvalidKeyException,
-            NoSuchPaddingException,
-            NoSuchAlgorithmException,
-            InvalidAlgorithmParameterException{
-        SecretKey keySpec = new SecretKeySpec(aemk.getKey(), "AES");
-        IvParameterSpec ivSpec = new IvParameterSpec(rpi.getData());
-        Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                                                AssociatedEncryptedMetadataKey aemk) {
+        try {
+            SecretKey keySpec = new SecretKeySpec(aemk.getKey(), "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(rpi.getData());
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
 
-        return new AssociatedMetadata(cipher.update(aem.getData()));
+            return new AssociatedMetadata(cipher.update(aem.getData()));
+        } catch (Exception e) {
+            throw new CryptoException(e);
+        }
+    }
+
+    public static List<RollingProximityIdentifier> generateAllRPIForADay(TemporaryExposureKey tek) {
+        final long enTimestamp = tek.getTimestamp().get();
+        List<RollingProximityIdentifier> rpiList = new ArrayList<>(TemporaryExposureKey.TEK_ROLLING_PERIOD);
+        RollingProximityIdentifierKey rpik = generateRPIK(tek);
+        for(long i = 0; i < TemporaryExposureKey.TEK_ROLLING_PERIOD; i++) {
+            rpiList.add(generateRPI(rpik, new ENNumber(enTimestamp + i)));
+        }
+        return rpiList;
+    }
+
+    public static List<RollingProximityIdentifier> filterEncounteredRPIs(List<TemporaryExposureKey> diagnosticKeys,
+                                                            List<RollingProximityIdentifier> collectedRPIs) {
+        List<RollingProximityIdentifier> encounteredRPIs = new ArrayList<>();
+        for(TemporaryExposureKey diagnosticKey : diagnosticKeys) {
+            encounteredRPIs.addAll(filterEncounteredRPIs(diagnosticKey, collectedRPIs));
+        }
+        return encounteredRPIs;
     }
 }
