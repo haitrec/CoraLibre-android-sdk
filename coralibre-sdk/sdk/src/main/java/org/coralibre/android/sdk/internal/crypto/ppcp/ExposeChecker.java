@@ -11,21 +11,21 @@ import static org.coralibre.android.sdk.internal.crypto.ppcp.TemporaryExposureKe
 
 public class ExposeChecker {
     public static List<RollingProximityIdentifier> generateAllRPIForADay(TemporaryExposureKey tek) {
-        final long enTimestamp = tek.getTimestamp().get();
+        final long enInterval = tek.getInterval().get();
         List<RollingProximityIdentifier> rpiList = new ArrayList<>(TemporaryExposureKey.TEK_ROLLING_PERIOD);
         RollingProximityIdentifierKey rpik = generateRPIK(tek);
         for(long i = 0; i < TemporaryExposureKey.TEK_ROLLING_PERIOD; i++) {
-            rpiList.add(generateRPI(rpik, new ENNumber(enTimestamp + i)));
+            rpiList.add(generateRPI(rpik, new ENNumber(enInterval + i)));
         }
         return rpiList;
     }
 
 
     private static List<TemporaryExposureKey> getMatchingTEKs(List<TemporaryExposureKey> allTEKs,
-                                                              ENNumber timestamp) {
+                                                              ENNumber Interval) {
         List<TemporaryExposureKey> relatedTEKs = new ArrayList<>();
         for(TemporaryExposureKey key : allTEKs) {
-            if(key.getTimestamp().equals(timestamp)) {
+            if(key.getInterval().equals(Interval)) {
                 relatedTEKs.add(key);
             }
         }
@@ -33,11 +33,11 @@ public class ExposeChecker {
     }
 
     private static List<TemporaryExposureKey> getAllRelatedTEKs(List<TemporaryExposureKey> allTEKs,
-                                                                ENNumber timestamp) {
+                                                                ENNumber Interval) {
         ENNumber slotBeginning = getMidnight(
-                new ENNumber(timestamp.get() - FUZZY_COMPARE_TIME_DEVIATION));
+                new ENNumber(Interval.get() - FUZZY_COMPARE_TIME_DEVIATION));
         ENNumber slotEnding = getMidnight(
-                new ENNumber(timestamp.get() + FUZZY_COMPARE_TIME_DEVIATION));
+                new ENNumber(Interval.get() + FUZZY_COMPARE_TIME_DEVIATION));
         List<TemporaryExposureKey> relatedTeKs = getMatchingTEKs(allTEKs, slotBeginning);
         if(!slotBeginning.equals(slotEnding)) {
             relatedTeKs.addAll(getMatchingTEKs(allTEKs, slotEnding));
@@ -45,12 +45,12 @@ public class ExposeChecker {
         return relatedTeKs;
     }
 
-    private static List<RollingProximityIdentifier> generateRPIs(TemporaryExposureKey tek, ENNumber timestamp) {
-        long slotBeginning = timestamp.get() - FUZZY_COMPARE_TIME_DEVIATION;
+    private static List<RollingProximityIdentifier> generateRPIs(TemporaryExposureKey tek, ENNumber Interval) {
+        long slotBeginning = Interval.get() - FUZZY_COMPARE_TIME_DEVIATION;
         if(slotBeginning < TemporaryExposureKey.getMidnight(slotBeginning)) {
             slotBeginning = TemporaryExposureKey.getMidnight(slotBeginning);
         }
-        long slotEnding = timestamp.get() + FUZZY_COMPARE_TIME_DEVIATION;
+        long slotEnding = Interval.get() + FUZZY_COMPARE_TIME_DEVIATION;
         if(slotEnding > TemporaryExposureKey.getMidnight(slotEnding) + TEK_ROLLING_PERIOD) {
             slotEnding = TemporaryExposureKey.getMidnight(slotBeginning) + TEK_ROLLING_PERIOD;
         }

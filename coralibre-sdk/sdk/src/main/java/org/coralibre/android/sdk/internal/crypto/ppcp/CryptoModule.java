@@ -106,7 +106,7 @@ public class CryptoModule {
     }
 
     public static RollingProximityIdentifier generateRPI(RollingProximityIdentifierKey rpik,
-                                                         ENNumber timestamp) {
+                                                         ENNumber interval) {
         try {
             SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
             // normally ECB is a bad idea, but in this case we just want to encrypt a single block
@@ -114,7 +114,7 @@ public class CryptoModule {
             Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
-            PaddedData paddedData = new PaddedData(timestamp);
+            PaddedData paddedData = new PaddedData(interval);
             return new RollingProximityIdentifier(cipher.update(paddedData.getData()));
         } catch (Exception e) {
             throw new CryptoException(e);

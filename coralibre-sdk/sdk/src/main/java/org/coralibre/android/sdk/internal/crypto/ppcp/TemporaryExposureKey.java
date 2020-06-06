@@ -14,13 +14,13 @@ public class TemporaryExposureKey {
     public final long MAX_UINT_32 = 4294967295L;
     public static final int TEK_LENGTH = 16; //defined in byte
 
-    private ENNumber timestamp;
+    private ENNumber interval;
     private byte[] key = new byte[TEK_LENGTH];
 
 
-    public TemporaryExposureKey(ENNumber timestamp, byte[] value) {
+    public TemporaryExposureKey(ENNumber interval, byte[] value) {
         if(value.length < TEK_LENGTH) throw new InvalidParameterException("tek size not 16bytes");
-        this.timestamp = getMidnight(timestamp);
+        this.interval = getMidnight(interval);
         System.arraycopy(value, 0, key, 0, TEK_LENGTH);
     }
 
@@ -28,8 +28,8 @@ public class TemporaryExposureKey {
         this(new ENNumber(rawKey.first), rawKey.second);
     }
 
-    public ENNumber getTimestamp() {
-        return timestamp;
+    public ENNumber getInterval() {
+        return interval;
     }
 
     public byte[] getKey() {
