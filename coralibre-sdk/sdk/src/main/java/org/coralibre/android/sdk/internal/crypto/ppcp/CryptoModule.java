@@ -101,13 +101,20 @@ public class CryptoModule {
             throws InvalidKeyException,
             NoSuchPaddingException,
             NoSuchAlgorithmException {
+        return generateRPI(rpik, getCurrentENNumber());
+    }
+
+     public static RollingProximityIdentifier generateRPI(RollingProximityIdentifierKey rpik, ENNumber enNumber)
+            throws InvalidKeyException,
+            NoSuchPaddingException,
+            NoSuchAlgorithmException {
         SecretKeySpec keySpec = new SecretKeySpec(rpik.getKey(), "AES");
         // normally ECB is a bad idea, but in this case we just want to encrypt a single block
         @SuppressLint("GetInstance")
         Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
 
-        PaddedData paddedData = new PaddedData(getCurrentENNumber());
+        PaddedData paddedData = new PaddedData(enNumber);
         return new RollingProximityIdentifier(cipher.update(paddedData.getData()));
     }
 

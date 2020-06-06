@@ -9,6 +9,7 @@ import org.coralibre.android.sdk.internal.crypto.ppcp.AssociatedEncryptedMetadat
 import org.coralibre.android.sdk.internal.crypto.ppcp.AssociatedEncryptedMetadataKey;
 import org.coralibre.android.sdk.internal.crypto.ppcp.AssociatedMetadata;
 import org.coralibre.android.sdk.internal.crypto.ppcp.CryptoModule;
+import org.coralibre.android.sdk.internal.crypto.ppcp.ENNumber;
 import org.coralibre.android.sdk.internal.crypto.ppcp.PaddedData;
 import org.coralibre.android.sdk.internal.crypto.ppcp.RollingProximityIdentifier;
 import org.coralibre.android.sdk.internal.crypto.ppcp.RollingProximityIdentifierKey;
@@ -105,16 +106,26 @@ public class CryptoModuleTests {
 
     private static final byte[] AM_VAL_V3_2_MINUS16db = {(byte) 0b11100000, (byte) 0xF0, 0x00, 0x00};
 
+    private static final byte[] TEK_VAL2 = ByteHelper.hexStringToByteArray("2765f41dbaa6306a264391913bf48723");
+
+    private static final byte[] TEK_VAL2_RPIK = ByteHelper.hexStringToByteArray("34fbbd748ee78bb386d1bab2df7b4165");
+
+    private static final byte[] TEK_VAL2_RPI_1 =  ByteHelper.hexStringToByteArray("31fc2cf219fe6dc6765d860e979ba9e5");
+
+    private static final byte[] TEK_VAL2_AEMK = ByteHelper.hexStringToByteArray("e01962eba7d4b5f40226e91ef9f6c050");
+
+    private static final byte[] TEK_VAL2_AEM = ByteHelper.hexStringToByteArray("10413a43");
+
     @Test
     public void testGenerateRPIK() throws Exception {
-        TemporaryExposureKey tek = new TemporaryExposureKey(new Pair<>(0L, TEK_VAL1));
+        TemporaryExposureKey tek = new TemporaryExposureKey(0L, TEK_VAL1);
         RollingProximityIdentifierKey rpik = CryptoModule.generateRPIK(tek);
         assertArrayEquals(RPIK_VAL1, rpik.getKey());
     }
 
     @Test
     public void testGenerateAEMK() throws Exception {
-        TemporaryExposureKey tek = new TemporaryExposureKey(new Pair<>(0L, TEK_VAL1));
+        TemporaryExposureKey tek = new TemporaryExposureKey(0L, TEK_VAL1);
         AssociatedEncryptedMetadataKey aemk = CryptoModule.generateAEMK(tek);
         assertArrayEquals(AEMK_VAL1, aemk.getKey());
     }
@@ -139,4 +150,23 @@ public class CryptoModuleTests {
         AssociatedMetadata decryptedAM = CryptoModule.decryptAEM(aem, rpi, aemk);
         assertArrayEquals(am.getData(), decryptedAM.getData());
     }
+
+    @Test
+    // See: https://github.com/corona-warn-app/cwa-app-android/issues/75#issuecomment-640114705
+    public void testRoundtripExample1() throws Exception {
+        TemporaryExposureKey tek = new TemporaryExposureKey(0L, TEK_VAL2);
+        RollingProximityIdentifierKey rpik = CryptoModule.generateRPIK(tek);
+        assertArrayEquals(TEK_VAL2_RPIK, rpik.getKey());
+        ENNumber enNumber = new ENNumber(2652091);
+        RollingProximityIdentifier rpi = CryptoModule.generateRPI(rpik, enNumber);
+        assertArrayEquals(TEK_VAL2_RPI_1, rpi.getData());
+
+        AssociatedEncryptedMetadataKey aemk = CryptoModule.generateAEMK(tek);
+        assertArrayEquals(TEK_VAL2_AEMK, aemk.getKey());
+
+        AssociatedEncryptedMetadata aem = new AssociatedEncryptedMetadata(TEK_VAL2_AEM);
+        AssociatedMetadata am = CryptoModule.decryptAEM(aem, rpi, aemk);
+        assertEquals(-14, am.getTransmitPowerLevel());
+    }
+
 }
