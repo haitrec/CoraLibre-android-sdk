@@ -48,7 +48,7 @@ public class ExposeChecker {
         return relatedTeKs;
     }
 
-    private static List<RollingProximityIdentifier> generateRPIs(TemporaryExposureKey tek,
+    public static List<RollingProximityIdentifier> generateRPIsForSlot(TemporaryExposureKey tek,
                                                                  ENNumber interval) {
         long slotBeginning = interval.get() - FUZZY_COMPARE_TIME_DEVIATION;
         if(slotBeginning < tek.getInterval().get()) {
@@ -68,7 +68,7 @@ public class ExposeChecker {
         return generatedRPIs;
     }
 
-    private static List<Pair<TemporaryExposureKey, RollingProximityIdentifier>>
+    public static List<Pair<TemporaryExposureKey, RollingProximityIdentifier>>
         findMatches(List<TemporaryExposureKey> teks,
                     List<RollingProximityIdentifier> collectedRPIs) {
         //TODO: Do dynamic programing foo and use a cache
@@ -79,7 +79,7 @@ public class ExposeChecker {
                     = getAllRelatedTEKs(teks, crpi.getInterval());
             for(TemporaryExposureKey tek : relatedTeks) {
                 List<RollingProximityIdentifier> generatedRPIs
-                        = generateRPIs(tek, crpi.getInterval());
+                        = generateRPIsForSlot(tek, crpi.getInterval());
                 for(RollingProximityIdentifier grpi :  generatedRPIs) {
                     if(grpi.equals(crpi)) {
                         matchingKeys.add(new Pair<>(tek, crpi));
